@@ -42,8 +42,9 @@ public class DispatcherServlet extends HttpServlet {
 
 	@Override
 	public void init(ServletConfig config) throws ServletException {
+		super.init(config);
 		// TODO 通过配置需要扫描的包
-		Set<Class<?>> classSet = ClassUtils.getClasses("com");
+		Set<Class<?>> classSet = ClassUtils.getClasses("com.doom.test");
 		ServletContext ctx = getServletContext();
 		ctx.setAttribute("classPool", ClassPool.getDefault());
 		ctx.setAttribute("router", requestMethodMap);
@@ -110,7 +111,7 @@ public class DispatcherServlet extends HttpServlet {
 			// attr.variableName(0);
 			ServletContext ctx = getServletContext();
 			ClassPool classPool = (ClassPool) ctx.getAttribute("classPool");
-			MethodInfo methodInfo = classPool.getMethod(realHandlerName,
+			MethodInfo methodInfo = classPool.getMethod(realHandlerName.replace(".", "/"),
 					realHandlerMethod.getName()).getMethodInfo();
 			CodeAttribute codeAttribute = methodInfo.getCodeAttribute();
 			LocalVariableAttribute attr = (LocalVariableAttribute) codeAttribute
