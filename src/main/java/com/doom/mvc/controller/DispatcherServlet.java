@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import javassist.ClassClassPath;
 import javassist.ClassPool;
 import javassist.NotFoundException;
 import javassist.bytecode.CodeAttribute;
@@ -46,7 +47,9 @@ public class DispatcherServlet extends HttpServlet {
 		// TODO 通过配置需要扫描的包
 		Set<Class<?>> classSet = ClassUtils.getClasses("com.doom.test");
 		ServletContext ctx = getServletContext();
-		ctx.setAttribute("classPool", ClassPool.getDefault());
+		final String webContextPath = ctx.getContextPath();
+		ClassPool.getDefault().insertClassPath(
+				new ClassClassPath(this.getClass()));
 		ctx.setAttribute("router", requestMethodMap);
 		for (Class<?> clazz : classSet) {
 			try {
@@ -65,8 +68,8 @@ public class DispatcherServlet extends HttpServlet {
 							if (!Modifier.isPublic(modifyMask)
 									|| Modifier.isStatic(modifyMask))
 								throw new Exception(
-										"service bean must be registered as static or non-public.");
-							String path = handlerAnnotation.path()
+										"service bean cannot be registered as static or non-public.");
+							String path = webContextPath + handlerAnnotation.path()
 									+ responseAnnotation.path();
 							// map中若已经存在一个相同的路径则抛出异常
 							if (requestMethodMap.containsKey(path))
@@ -101,6 +104,9 @@ public class DispatcherServlet extends HttpServlet {
 		// 获取请求路径
 		Method realHandlerMethod = requestMethodMap
 				.get(request.getRequestURI());
+		//TODO 待添加异常信息，若用户请求了没有配置的地址，应返回HTTP code 404
+		if(realHandlerMethod == null)
+			throw new NullPointerException("404");
 		String realHandlerName = realHandlerMethod.getDeclaringClass()
 				.getName();
 		Class<?>[] paramTypes = realHandlerMethod.getParameterTypes();
@@ -110,8 +116,8 @@ public class DispatcherServlet extends HttpServlet {
 		try {
 			// attr.variableName(0);
 			ServletContext ctx = getServletContext();
-			ClassPool classPool = (ClassPool) ctx.getAttribute("classPool");
-			MethodInfo methodInfo = classPool.getMethod(realHandlerName.replace(".", "/"),
+			ClassPool classPool = ClassPool.getDefault();
+			MethodInfo methodInfo = classPool.getMethod(realHandlerName,
 					realHandlerMethod.getName()).getMethodInfo();
 			CodeAttribute codeAttribute = methodInfo.getCodeAttribute();
 			LocalVariableAttribute attr = (LocalVariableAttribute) codeAttribute
@@ -119,20 +125,20 @@ public class DispatcherServlet extends HttpServlet {
 			for (int i = 0; i < values.length; i++) {
 				if (paramTypes[i].equals(HttpSession.class))
 					values[i] = request.getSession();
-				else if (paramTypes[i].equals(HttpServletRequest.class)
-						|| paramTypes[i].equals(HttpServletRequest.class
-								.getGenericSuperclass()))
+				else if (paramTypes[i].equals(HttpServletRequest.class))
 					values[i] = request;
-				else if (paramTypes[i].equals(HttpServletResponse.class)
-						|| paramTypes.equals(HttpServletResponse.class
-								.getGenericSuperclass()))
+				else if (paramTypes[i].equals(HttpServletResponse.class))
 					values[i] = response;
 				else if (paramTypes[i].isArray())
-					values[i] = paramsMap.get(attr.variableName(i));
-				else
-					values[i] = paramsMap.get(attr.variableName(i))[0];
+					values[i] = paramsMap.get(attr.variableName(i + 1));
+				else if (paramsMap.get(attr.variableName(i + 1)) != null)
+					values[i] = paramsMap.get(attr.variableName(i + 1))[0];
 			}
-			realHandlerMethod.invoke(ctx.getAttribute(realHandlerName), values);
+			Object result = realHandlerMethod.invoke(ctx.getAttribute(realHandlerName), values);
+			if(result == null)
+				return;
+			else
+				response.getOutputStream().write(result.toString().getBytes());
 		} catch (IllegalAccessException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
