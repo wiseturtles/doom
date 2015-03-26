@@ -45,7 +45,7 @@ public class DispatcherServlet extends HttpServlet {
 	public void init(ServletConfig config) throws ServletException {
 		super.init(config);
 		// TODO 通过配置需要扫描的包
-		Set<Class<?>> classSet = ClassUtils.getClasses("com.doom.test");
+		Set<Class<?>> classSet = ClassUtils.getClasses("com.doom.mvc.test");
 		ServletContext ctx = getServletContext();
 		final String webContextPath = ctx.getContextPath();
 		ClassPool.getDefault().insertClassPath(
