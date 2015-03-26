@@ -5,3 +5,4 @@
 ### 目前仍在开发阶段
 ### Thank yznxing, blog: http://guoliangqi.iteye.com/blog/ (ClassUtils.java从此博客复制,已注明)
 ### =.=ClassUtils.java经过测试存在bug，择日考虑自己重写一个包扫描工具
+### 请切换到web-demo分支测试并查看在web环境下的效果
